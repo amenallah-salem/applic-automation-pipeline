@@ -1,0 +1,44 @@
+{
+  "name": "Example — Create Job Application",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "8b2b7b9e-0000-0000-0000-000000000001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://backend:8000/jobs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"company_name\": \"Acme Corp\",\n  \"job_title\": \"Senior Engineer\",\n  \"job_url\": \"https://example.com/jobs/123\",\n  \"source\": \"linkedin\",\n  \"status\": \"saved\"\n}",
+        "options": {}
+      },
+      "id": "8b2b7b9e-0000-0000-0000-000000000002",
+      "name": "Create Job via Backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [[{ "node": "Create Job via Backend", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "1",
+  "meta": { "templateCredsSetupCompleted": true },
+  "tags": []
+}
