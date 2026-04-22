@@ -223,6 +223,25 @@ applic-automation-pipeline/
 
 ## 9. Troubleshooting
 
+- **`docker compose up` fails with `error pulling image configuration: download failed`
+  / `i/o timeout` to a Cloudflare IP (e.g. `172.64.*`)**: Docker Hub / ghcr.io is
+  flaky or your network blocks it. Try, in order:
+  1. Just retry — `docker compose pull` resumes partial downloads.
+  2. Pull each image individually to isolate the culprit:
+     ```bash
+     docker pull postgres:16-alpine
+     docker pull n8nio/n8n:latest
+     docker pull ghcr.io/open-webui/open-webui:main
+     ```
+  3. Force Docker to use public DNS. Create/edit `/etc/docker/daemon.json`:
+     ```json
+     { "dns": ["1.1.1.1", "8.8.8.8"] }
+     ```
+     then `sudo systemctl restart docker` and retry.
+  4. If you're on a corporate VPN / proxy, either disconnect or configure
+     Docker's HTTP(S) proxy under `~/.docker/config.json`.
+  5. Use a registry mirror (see
+     [Docker Hub mirrors](https://docs.docker.com/docker-hub/mirror/)).
 - **OpenWebUI won't start**: set a strong `OPENWEBUI_SECRET_KEY`
   (`openssl rand -hex 32`). Older versions require a non-empty value.
 - **n8n fails at boot**: make sure the `n8n` database exists — it's created
