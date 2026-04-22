@@ -5,8 +5,8 @@ SELECT 'CREATE DATABASE openwebui'
 SELECT 'CREATE DATABASE n8n'
   WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'n8n')\gexec
 
--- Application schema lives in the main POSTGRES_DB (default: applications).
-\connect :"POSTGRES_DB"
+-- The remaining statements run against POSTGRES_DB, which is the database the
+-- postgres docker-entrypoint connects this init script to by default.
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
