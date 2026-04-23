@@ -8,7 +8,7 @@ single `docker compose up` and includes:
 | `frontend`  | React + Vite dashboard (served by nginx)        | `3000`       |
 | `backend`   | FastAPI REST API                                | `8000`       |
 | `postgres`  | PostgreSQL 16, shared by all services           | `5432`       |
-| `openwebui` | [OpenWebUI](https://openwebui.com) on Postgres  | `3001`       |
+| `openwebui` | [Open WebUI](https://openwebui.com) built from source (see [`openwebui/`](openwebui/)), on Postgres | `3001` |
 | `n8n`       | [n8n](https://n8n.io) automation, on Postgres   | `5678`       |
 
 All services share the `appnet` Docker network and address each other by

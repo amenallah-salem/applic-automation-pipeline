@@ -45,11 +45,18 @@ services:
     networks: [appnet]
 
   openwebui:
-    image: ghcr.io/open-webui/open-webui:main
+    build:
+      context: ./openwebui
+      args:
+        OPENWEBUI_REF: ${OPENWEBUI_REF:-main}
     restart: unless-stopped
     environment:
+      # Use the shared Postgres (NOT the default SQLite).
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${OPENWEBUI_DB:-openwebui}
       WEBUI_SECRET_KEY: ${OPENWEBUI_SECRET_KEY}
+      # Big-file handling for RAG uploads (see openwebui/README.md).
+      RAG_FILE_MAX_SIZE: ${RAG_FILE_MAX_SIZE:-500}
+      RAG_FILE_MAX_COUNT: ${RAG_FILE_MAX_COUNT:-50}
     volumes:
       - openwebui_data:/app/backend/data
     ports:
