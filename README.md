@@ -61,6 +61,23 @@ Once all services are healthy:
 - n8n:       <http://localhost:5678> (basic auth from `.env`)
 - Postgres:  `postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@localhost:5432/$POSTGRES_DB`
 
+### Health check
+
+A single command tells you whether every container is up, the resolved
+URLs all agree on `APP_HOST`, every HTTP endpoint answers, the backend
+CORS preflight accepts the frontend origin, and the three databases plus
+`pgvector` extension are in place:
+
+```bash
+./scripts/check.sh           # one-shot, exits non-zero if anything fails
+./scripts/check.sh --watch   # re-run every 5s
+```
+
+This is also the fastest way to diagnose `TypeError: NetworkError when
+attempting to fetch resource` — the script reports exactly which of
+`VITE_API_BASE_URL`, `CORS_ORIGINS`, or the live backend CORS header is
+the mismatched one.
+
 ### Common commands
 
 ```bash
