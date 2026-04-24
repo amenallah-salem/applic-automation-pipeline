@@ -9,10 +9,19 @@ from source instead of pulling the upstream
    content extraction limits) via env vars in `docker-compose.yml`.
 3. **Patch the Open WebUI source** (frontend or backend) before building.
 
-The shared Postgres from `docker-compose.yml` is used for Open WebUI's
-data — it does **not** fall back to SQLite. That wiring lives in the
-`openwebui.environment.DATABASE_URL` entry in `docker-compose.yml`
-(points at `postgres:5432/<OPENWEBUI_DB>`).
+The shared Postgres from `docker-compose.yml` is used for **all** Open
+WebUI storage — it does **not** fall back to SQLite anywhere:
+
+| Storage kind               | Where it lives                                                  |
+| -------------------------- | --------------------------------------------------------------- |
+| Application data (users, chats, files, config, knowledge) | `openwebui` database on the shared Postgres, via `DATABASE_URL` |
+| RAG vector store (embeddings, chunks) | Same `openwebui` database, via `VECTOR_DB=pgvector` + `PGVECTOR_DB_URL` |
+
+To make the vector store work on the same Postgres, the `postgres`
+service uses the `pgvector/pgvector:pg16` image (Postgres 16 with the
+`vector` extension preinstalled) and `db/init.sql` runs
+`CREATE EXTENSION IF NOT EXISTS vector` on the `openwebui` database on
+first boot.
 
 ## Build / run
 

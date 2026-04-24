@@ -1,6 +1,9 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    # pgvector/pgvector is Postgres 16 with the `vector` extension preinstalled.
+    # Open WebUI's vector store (VECTOR_DB=pgvector) needs this to avoid a
+    # local sqlite-backed Chroma file. See db/init.sql for CREATE EXTENSION.
+    image: pgvector/pgvector:pg16
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -51,8 +54,14 @@ services:
         OPENWEBUI_REF: ${OPENWEBUI_REF:-main}
     restart: unless-stopped
     environment:
-      # Use the shared Postgres (NOT the default SQLite).
+      # Application data (users, chats, files, config, ...) on the shared
+      # Postgres (NOT the default SQLite).
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${OPENWEBUI_DB:-openwebui}
+      # RAG vector store on the same Postgres via pgvector, so there is NO
+      # sqlite fallback anywhere (was: chroma at /app/backend/data/vector_db).
+      # PGVECTOR_DB_URL defaults to DATABASE_URL; set explicitly for clarity.
+      VECTOR_DB: pgvector
+      PGVECTOR_DB_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${OPENWEBUI_DB:-openwebui}
       WEBUI_SECRET_KEY: ${OPENWEBUI_SECRET_KEY}
       # Big-file handling for RAG uploads (see openwebui/README.md).
       RAG_FILE_MAX_SIZE: ${RAG_FILE_MAX_SIZE:-500}

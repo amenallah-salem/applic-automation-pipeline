@@ -36,3 +36,10 @@ CREATE TABLE IF NOT EXISTS generated_documents (
 CREATE INDEX IF NOT EXISTS idx_job_applications_status      ON job_applications(status);
 CREATE INDEX IF NOT EXISTS idx_job_applications_created_at  ON job_applications(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_generated_documents_job_id   ON generated_documents(job_id);
+
+-- Finally, enable the pgvector extension on the openwebui database so Open
+-- WebUI's vector store (VECTOR_DB=pgvector) can share this same Postgres
+-- instance instead of falling back to a local sqlite-backed Chroma file.
+-- This runs last because `\c` switches the session permanently.
+\c openwebui
+CREATE EXTENSION IF NOT EXISTS "vector";
