@@ -27,7 +27,12 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       OPENWEBUI_URL: http://openwebui:8080
-      CORS_ORIGINS: '["http://localhost:${FRONTEND_PORT:-3000}"]'
+      # JSON array of origins the backend accepts. Must include every
+      # scheme+host+port the browser actually uses when loading the frontend
+      # (e.g. http://localhost:3000 AND http://127.0.0.1:3000 AND
+      # http://192.168.x.y:3000 if you open it from another machine on the LAN).
+      # Override via CORS_ORIGINS in .env.
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000","http://127.0.0.1:3000"]}
     depends_on:
       postgres:
         condition: service_healthy
@@ -39,7 +44,11 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_BASE_URL: http://localhost:${BACKEND_PORT:-8000}
+        # URL the BROWSER will use to reach the backend. This is baked into
+        # the static JS at build time, so it must match the host you actually
+        # type in the browser address bar (localhost, 127.0.0.1, or a LAN IP).
+        # Override via VITE_API_BASE_URL in .env (then rebuild the frontend).
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3000}:80"

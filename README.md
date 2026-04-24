@@ -174,8 +174,11 @@ Minimal React + Vite dashboard at
 - View stored generated documents
 - One-click "Generate CV / Cover letter / Message" (calls `POST /generate`)
 
-The API base URL is baked in at build time via the `VITE_API_BASE_URL`
-build arg (default `http://localhost:${BACKEND_PORT}`).
+The API base URL is baked into the JS at build time via the
+`VITE_API_BASE_URL` build arg (default `http://localhost:8000`). If you
+open the dashboard on `127.0.0.1`, a LAN IP, or anything other than
+`localhost`, set `VITE_API_BASE_URL` and `CORS_ORIGINS` in `.env` to
+match — see the troubleshooting section.
 
 ---
 
@@ -247,6 +250,17 @@ applic-automation-pipeline/
 - **n8n fails at boot**: make sure the `n8n` database exists — it's created
   by `db/init.sql` on first boot. If you upgraded from SQLite, wipe the
   `n8n_data` volume.
+- **Dashboard shows `TypeError: NetworkError when attempting to fetch resource`**:
+  the browser is loading the frontend from one host (e.g. `127.0.0.1:3000`
+  or a LAN IP) but trying to reach the backend on a different one
+  (`localhost:8000` baked into the JS at build time). Fix in `.env`:
+  ```env
+  VITE_API_BASE_URL=http://<same-host-you-type-in-browser>:8000
+  CORS_ORIGINS=["http://<same-host-you-type-in-browser>:3000"]
+  ```
+  Then rebuild: `docker compose up -d --build frontend backend`. The
+  frontend must be rebuilt because `VITE_API_BASE_URL` is baked into the
+  static JS bundle.
 - **Ports already in use**: override any `*_PORT` variable in `.env`.
 - **Resetting everything**: `docker compose down -v` drops all volumes
   (Postgres data, n8n workflows, OpenWebUI data).
