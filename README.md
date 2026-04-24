@@ -175,10 +175,12 @@ Minimal React + Vite dashboard at
 - One-click "Generate CV / Cover letter / Message" (calls `POST /generate`)
 
 The API base URL is baked into the JS at build time via the
-`VITE_API_BASE_URL` build arg (default `http://localhost:8000`). If you
-open the dashboard on `127.0.0.1`, a LAN IP, or anything other than
-`localhost`, set `VITE_API_BASE_URL` and `CORS_ORIGINS` in `.env` to
-match — see the troubleshooting section.
+`VITE_API_BASE_URL` build arg, which by default is
+`http://${APP_HOST}:${BACKEND_PORT}`. Setting a single `APP_HOST` in
+`.env` (default `localhost`) keeps the frontend, backend CORS, n8n
+webhook URLs and Open WebUI all on the same origin. If you open the
+dashboard on `127.0.0.1` or a LAN IP, change `APP_HOST` to match — see
+the troubleshooting section.
 
 ---
 
@@ -253,12 +255,15 @@ applic-automation-pipeline/
 - **Dashboard shows `TypeError: NetworkError when attempting to fetch resource`**:
   the browser is loading the frontend from one host (e.g. `127.0.0.1:3000`
   or a LAN IP) but trying to reach the backend on a different one
-  (`localhost:8000` baked into the JS at build time). Fix in `.env`:
+  (`localhost:8000` baked into the JS at build time). Single-knob fix in
+  `.env`:
   ```env
-  VITE_API_BASE_URL=http://<same-host-you-type-in-browser>:8000
-  CORS_ORIGINS=["http://<same-host-you-type-in-browser>:3000"]
+  APP_HOST=127.0.0.1       # or 192.168.x.y — match the browser address bar
   ```
-  Then rebuild: `docker compose up -d --build frontend backend`. The
+  `APP_HOST` drives the frontend's backend URL, the backend CORS origin,
+  `n8n`'s webhook URL + `N8N_HOST`, and Open WebUI's `WEBUI_URL` — every
+  browser-facing URL lives on the same origin. Then rebuild:
+  `docker compose up -d --build frontend backend n8n openwebui`. The
   frontend must be rebuilt because `VITE_API_BASE_URL` is baked into the
   static JS bundle.
 - **Ports already in use**: override any `*_PORT` variable in `.env`.

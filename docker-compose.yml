@@ -27,12 +27,10 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       OPENWEBUI_URL: http://openwebui:8080
-      # JSON array of origins the backend accepts. Must include every
-      # scheme+host+port the browser actually uses when loading the frontend
-      # (e.g. http://localhost:3000 AND http://127.0.0.1:3000 AND
-      # http://192.168.x.y:3000 if you open it from another machine on the LAN).
-      # Override via CORS_ORIGINS in .env.
-      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000","http://127.0.0.1:3000"]}
+      # JSON array of origins the backend accepts. Defaults to
+      # http://${APP_HOST}:${FRONTEND_PORT} so a single APP_HOST in .env is
+      # enough. Override CORS_ORIGINS directly if you need multiple origins.
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://${APP_HOST:-localhost}:${FRONTEND_PORT:-3000}"]}
     depends_on:
       postgres:
         condition: service_healthy
@@ -44,11 +42,11 @@ services:
     build:
       context: ./frontend
       args:
-        # URL the BROWSER will use to reach the backend. This is baked into
-        # the static JS at build time, so it must match the host you actually
-        # type in the browser address bar (localhost, 127.0.0.1, or a LAN IP).
-        # Override via VITE_API_BASE_URL in .env (then rebuild the frontend).
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+        # URL the BROWSER uses to reach the backend. Baked into the static
+        # JS at build time, so must match the host in the browser address
+        # bar. Defaults to http://${APP_HOST}:${BACKEND_PORT}. Override
+        # VITE_API_BASE_URL directly to force a specific URL.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://${APP_HOST:-localhost}:${BACKEND_PORT:-8000}}
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3000}:80"
@@ -72,6 +70,9 @@ services:
       VECTOR_DB: pgvector
       PGVECTOR_DB_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${OPENWEBUI_DB:-openwebui}
       WEBUI_SECRET_KEY: ${OPENWEBUI_SECRET_KEY}
+      # Browser-facing URL (used e.g. in OAuth redirects). Single APP_HOST
+      # knob keeps every container on the same origin.
+      WEBUI_URL: ${WEBUI_URL:-http://${APP_HOST:-localhost}:${OPENWEBUI_PORT:-3001}}
       # Big-file handling for RAG uploads (see openwebui/README.md).
       RAG_FILE_MAX_SIZE: ${RAG_FILE_MAX_SIZE:-500}
       RAG_FILE_MAX_COUNT: ${RAG_FILE_MAX_COUNT:-50}
@@ -97,10 +98,12 @@ services:
       DB_POSTGRESDB_DATABASE: ${N8N_DB:-n8n}
       DB_POSTGRESDB_USER: ${POSTGRES_USER}
       DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
-      N8N_HOST: localhost
+      # Single APP_HOST knob so n8n's self-links (e.g. webhook URLs it shows
+      # in the editor) match the host your browser uses.
+      N8N_HOST: ${APP_HOST:-localhost}
       N8N_PORT: 5678
       N8N_PROTOCOL: http
-      WEBHOOK_URL: http://localhost:${N8N_PORT:-5678}/
+      WEBHOOK_URL: ${WEBHOOK_URL:-http://${APP_HOST:-localhost}:${N8N_PORT:-5678}/}
       GENERIC_TIMEZONE: ${TZ:-UTC}
     volumes:
       - n8n_data:/home/node/.n8n
