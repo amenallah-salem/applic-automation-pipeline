@@ -1,44 +1,33 @@
 # syntax=docker/dockerfile:1.6
 #
-# Source-built Open WebUI image.
+# Open WebUI image — installed straight from PyPI.
 #
-# This replaces the upstream `ghcr.io/open-webui/open-webui` image with a
-# build we fully control. The source is cloned inside the build so every
-# `docker compose build openwebui` produces a reproducible image pinned to
-# ${OPENWEBUI_REF}. If you want to edit Open WebUI source locally, clone
-# the repo into `openwebui/src/` and change the frontend / backend stages
-# below to `COPY src/ .` instead of the `git clone` step (see
-# openwebui/README.md).
+# This replaces the previous source-build (git clone + node frontend build +
+# uv pip install) with a single `pip install open-webui[==X.Y.Z]`. The PyPI
+# wheel ships the prebuilt SvelteKit frontend bundle, so we no longer need a
+# Node toolchain at all and the build drops from ~8 minutes to <2.
+#
+# Pin a version with the OPENWEBUI_VERSION build arg / .env knob (default:
+# latest). All runtime tuning (DATABASE_URL, VECTOR_DB, RAG_FILE_MAX_SIZE,
+# WEBUI_SECRET_KEY, ...) still comes from environment variables in
+# docker-compose.yml.
 
-ARG OPENWEBUI_REF=main
-ARG NODE_IMAGE=node:22-alpine3.20
 ARG PYTHON_IMAGE=python:3.11-slim-bookworm
+ARG OPENWEBUI_VERSION=
 
-########################################
-# Stage 1 - build the SvelteKit frontend
-########################################
-FROM ${NODE_IMAGE} AS frontend
-ARG OPENWEBUI_REF
-ENV NODE_OPTIONS="--max-old-space-size=4096"
-WORKDIR /src
+FROM ${PYTHON_IMAGE}
 
-RUN apk add --no-cache git \
- && git clone --depth 1 --branch "${OPENWEBUI_REF}" https://github.com/open-webui/open-webui.git . \
- && git log -1 --pretty=%H > /src/.build-hash
-
-RUN npm ci --force
-RUN APP_BUILD_HASH="$(cat /src/.build-hash)" npm run build
-
-########################################
-# Stage 2 - python runtime
-########################################
-FROM ${PYTHON_IMAGE} AS runtime
+ARG OPENWEBUI_VERSION
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
     ENV=prod \
     PORT=8080 \
+    HOST=0.0.0.0 \
     HOME=/root \
+    DATA_DIR=/app/backend/data \
     SCARF_NO_ANALYTICS=true \
     DO_NOT_TRACK=true \
     ANONYMIZED_TELEMETRY=false \
@@ -50,22 +39,40 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     TIKTOKEN_CACHE_DIR="/app/backend/data/cache/tiktoken" \
     HF_HOME="/app/backend/data/cache/embedding/models"
 
+# Runtime deps the open-webui wheel calls out to:
+#   pandoc / ffmpeg / libsm6 / libxext6  -> document + media processing
+#   curl                                 -> healthcheck
+#   build-essential gcc python3-dev      -> a couple of native deps build on install
+#   libmariadb-dev libpq-dev             -> DB drivers (we use postgres)
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-      git build-essential pandoc gcc netcat-openbsd curl jq \
-      libmariadb-dev python3-dev ffmpeg libsm6 libxext6 zstd \
+      build-essential gcc python3-dev \
+      pandoc ffmpeg libsm6 libxext6 \
+      curl \
+      libmariadb-dev libpq-dev \
  && rm -rf /var/lib/apt/lists/*
 
-# Bring the built frontend + backend source over from stage 1.
-WORKDIR /app
-COPY --from=frontend /src /app
+# Install Open WebUI from PyPI. If OPENWEBUI_VERSION is empty we get the
+# latest; otherwise we pin to that exact version (e.g. 0.9.2).
+#
+# The wheel does NOT pull in psycopg2 (postgres driver) by default — peewee,
+# which Open WebUI uses for its app DB, only loads it lazily. We install it
+# here so DATABASE_URL=postgresql://... works out of the box; otherwise the
+# container crashes at boot with "ImproperlyConfigured: Postgres driver not
+# installed!". Same story for pgvector's psycopg dependency.
+RUN if [ -n "${OPENWEBUI_VERSION}" ]; then \
+        pip install "open-webui==${OPENWEBUI_VERSION}"; \
+    else \
+        pip install open-webui; \
+    fi \
+ && pip install psycopg2-binary pgvector
 
-# Install python deps.
 WORKDIR /app/backend
-RUN pip install --no-cache-dir uv \
- && uv pip install --system --no-cache-dir -r requirements.txt
+RUN mkdir -p /app/backend/data
 
 EXPOSE 8080
 
-# start.sh lives in /app/backend and is the upstream entrypoint.
-CMD ["bash", "start.sh"]
+# `open-webui serve` is the official entrypoint exposed by the PyPI package.
+# It honours HOST/PORT, DATA_DIR, DATABASE_URL, VECTOR_DB and every other
+# env var documented at https://docs.openwebui.com/getting-started/env-configuration
+CMD ["open-webui", "serve"]
