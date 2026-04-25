@@ -31,6 +31,10 @@ docker compose up -d --build              # ~3-5 min on cold cache
 
 Then open <http://localhost:3000> (dashboard) and <http://localhost:3001> (Open WebUI — log in with the credentials printed by the seed script).
 
+For the full picture of how the four apps interact (document generation,
+automated submission pipeline, follow-ups, monitoring, recommended next
+steps), read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
 ---
 
 ## 1. Prerequisites
