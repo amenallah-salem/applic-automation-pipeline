@@ -78,6 +78,35 @@ attempting to fetch resource` — the script reports exactly which of
 `VITE_API_BASE_URL`, `CORS_ORIGINS`, or the live backend CORS header is
 the mismatched one.
 
+### Seed Open WebUI (admin + users + Groq)
+
+Once the stack is up, bootstrap Open WebUI with an admin account, a few
+extra user accounts, and a Groq endpoint as the first OpenAI-compatible
+connection so its models show up first in the chat model picker:
+
+```bash
+GROQ_API_KEY=gsk_xxx ./scripts/seed_openwebui.py
+```
+
+The script is idempotent — running it again skips existing users and
+re-applies the model config. Useful flags:
+
+```bash
+# point at a different Open WebUI host
+./scripts/seed_openwebui.py --url http://192.168.1.50:3001
+
+# add only your own users (json list of {name,email,password,role?})
+./scripts/seed_openwebui.py --users-file my_users.json
+
+# only create accounts; don't touch model connections
+./scripts/seed_openwebui.py --skip-models
+```
+
+Optional env vars: `OPENWEBUI_ADMIN_EMAIL`, `OPENWEBUI_ADMIN_PASSWORD`,
+`GROQ_BASE_URL`, plus `OPENROUTER_API_KEY` / `OPENAI_API_KEY` to add
+those providers as additional connections next to Groq. Stdlib only —
+no `pip install` needed.
+
 ### Common commands
 
 ```bash

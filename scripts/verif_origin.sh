@@ -1,1 +1,0 @@
-docker compose config | grep -E 'VITE_API_BASE_URL|CORS_ORIGINS'
